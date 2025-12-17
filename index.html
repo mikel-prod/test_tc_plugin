@@ -97,19 +97,33 @@
 </head>
 <body>
     <div class="container">
-        <h1>Hello World! 👋</h1>
-        <p class="subtitle">Your first Trimble Connect Extension</p>
+        <h1>Project File Statistics 📊</h1>
+        <p class="subtitle">Files by Extension</p>
         <div class="badge">Trimble Connect Extension v1.0</div>
 
-        <div class="info">
-            <strong>Status:</strong> Extension loaded successfully!<br>
+        <div class="info" id="loading-info">
+            <strong>Status:</strong> Loading project files...<br>
             <strong>Date:</strong> <span id="current-date"></span>
         </div>
 
-        <div id="tc-info">
-            <strong>Trimble Connect API Connected</strong><br>
-            Extension is communicating with Trimble Connect workspace.
+        <div id="file-stats" style="display: none; margin-top: 30px;">
+            <div style="text-align: left; max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #667eea;">
+                            <th style="padding: 10px; text-align: left;">Extension</th>
+                            <th style="padding: 10px; text-align: right;">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-table"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; font-size: 0.9rem;">
+                <strong>Total Files:</strong> <span id="total-files">0</span>
+            </div>
         </div>
+
+        <div id="error-info" style="display: none; margin-top: 20px; padding: 20px; background: #ffebee; border-radius: 10px; color: #c62828;"></div>
     </div>
 
     <!-- Load Trimble Connect Workspace API -->
@@ -123,13 +137,15 @@
             day: 'numeric'
         });
 
+        let globalAPI = null;
+        let accessToken = null;
+
         // Initialize extension
         async function initExtension() {
             try {
                 console.log('Connecting to Trimble Connect Workspace API...');
                 console.log('TrimbleConnectWorkspace available:', typeof TrimbleConnectWorkspace);
 
-                // Check if API is loaded
                 if (typeof TrimbleConnectWorkspace === 'undefined') {
                     throw new Error('TrimbleConnectWorkspace not loaded');
                 }
@@ -144,7 +160,11 @@
                                 handleCommand(args.data);
                                 break;
                             case "extension.accessToken":
-                                console.log('Access token received');
+                                console.log('Access token received:', args.data);
+                                accessToken = args.data;
+                                if (accessToken) {
+                                    loadFileStatistics();
+                                }
                                 break;
                             case "extension.userSettingsChanged":
                                 console.log('User settings changed');
@@ -153,34 +173,125 @@
                                 console.log('Unknown event:', event);
                         }
                     },
-                    30000 // 30 second timeout
+                    30000
                 );
 
+                globalAPI = API;
                 console.log('Connected to Trimble Connect!');
-                document.getElementById('tc-info').classList.add('visible');
 
                 // Create and set the menu
                 const mainMenuObject = {
-                    title: "Hello World",
+                    title: "File Statistics",
                     icon: "https://mikel-prod.github.io/test_tc_plugin/icon.svg",
-                    command: "show_hello_world"
+                    command: "show_file_stats"
                 };
 
                 await API.ui.setMenu(mainMenuObject);
                 console.log('Menu set successfully!');
 
+                // Request access token
+                console.log('Requesting access token...');
+                await API.extension.requestAccessToken();
+
             } catch (error) {
                 console.error('Failed to connect to Trimble Connect:', error);
-                console.log('Extension running in standalone mode');
+                showError('Failed to connect: ' + error.message);
             }
+        }
+
+        async function loadFileStatistics() {
+            try {
+                console.log('Loading file statistics...');
+
+                // Get project info
+                const project = await globalAPI.project.getProject();
+                console.log('Project:', project);
+
+                // Get project files using Core API
+                const apiRegion = project.region || 'us-east-1';
+                const apiUrl = `https://app${apiRegion === 'us-east-1' ? '' : apiRegion.replace('us-east-1', '')}.connect.trimble.com/tc/api/2.0/projects/${project.id}/files`;
+
+                console.log('Fetching files from:', apiUrl);
+
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const files = await response.json();
+                console.log('Files received:', files);
+
+                // Count files by extension
+                const extensionCounts = {};
+                let totalFiles = 0;
+
+                function processFiles(fileList) {
+                    if (!Array.isArray(fileList)) return;
+
+                    fileList.forEach(file => {
+                        if (file.type === 'FILE') {
+                            totalFiles++;
+                            const ext = file.name.split('.').pop().toLowerCase() || 'no extension';
+                            extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
+                        }
+                    });
+                }
+
+                processFiles(files);
+
+                // Display results
+                displayStatistics(extensionCounts, totalFiles);
+
+            } catch (error) {
+                console.error('Error loading file statistics:', error);
+                showError('Failed to load files: ' + error.message);
+            }
+        }
+
+        function displayStatistics(extensionCounts, totalFiles) {
+            document.getElementById('loading-info').style.display = 'none';
+            document.getElementById('file-stats').style.display = 'block';
+
+            const table = document.getElementById('stats-table');
+            table.innerHTML = '';
+
+            // Sort by count descending
+            const sorted = Object.entries(extensionCounts).sort((a, b) => b[1] - a[1]);
+
+            sorted.forEach(([ext, count]) => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #eee';
+                row.innerHTML = `
+                    <td style="padding: 10px;">.${ext}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: 600;">${count}</td>
+                `;
+                table.appendChild(row);
+            });
+
+            document.getElementById('total-files').textContent = totalFiles;
+        }
+
+        function showError(message) {
+            document.getElementById('loading-info').style.display = 'none';
+            const errorDiv = document.getElementById('error-info');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
         }
 
         function handleCommand(command) {
             console.log('Command clicked:', command);
-            // Handle menu commands here
             switch (command) {
-                case "show_hello_world":
-                    console.log('Hello World menu clicked!');
+                case "show_file_stats":
+                    console.log('File Statistics menu clicked!');
+                    if (accessToken) {
+                        loadFileStatistics();
+                    }
                     break;
                 default:
                     console.log('Unknown command:', command);
