@@ -189,9 +189,15 @@
                 await API.ui.setMenu(mainMenuObject);
                 console.log('Menu set successfully!');
 
-                // Request access token
-                console.log('Requesting access token...');
-                await API.extension.requestAccessToken();
+                // Request access token permission
+                console.log('Requesting access token permission...');
+                const token = await API.extension.getPermission("accesstoken");
+                console.log('Access token result:', token);
+
+                if (token && token !== 'denied') {
+                    accessToken = token;
+                    loadFileStatistics();
+                }
 
             } catch (error) {
                 console.error('Failed to connect to Trimble Connect:', error);
