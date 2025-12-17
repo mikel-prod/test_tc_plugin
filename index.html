@@ -127,15 +127,15 @@
         async function initExtension() {
             try {
                 console.log('Connecting to Trimble Connect Workspace API...');
-                console.log('WorkspaceAPI available:', typeof WorkspaceAPI);
+                console.log('TrimbleConnectWorkspace available:', typeof TrimbleConnectWorkspace);
 
-                // Check if WorkspaceAPI is loaded
-                if (typeof WorkspaceAPI === 'undefined') {
-                    throw new Error('WorkspaceAPI not loaded');
+                // Check if API is loaded
+                if (typeof TrimbleConnectWorkspace === 'undefined') {
+                    throw new Error('TrimbleConnectWorkspace not loaded');
                 }
 
                 // Connect to the API
-                const API = await WorkspaceAPI.connect(
+                const API = await TrimbleConnectWorkspace.connect(
                     window.parent,
                     (event, args) => {
                         console.log('Event received:', event, args);
