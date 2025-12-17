@@ -97,12 +97,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>Project File Statistics 📊</h1>
-        <p class="subtitle">Files by Extension</p>
+        <h1>Project Information 📋</h1>
+        <p class="subtitle">Current Project Details</p>
         <div class="badge">Trimble Connect Extension v1.0</div>
 
         <div class="info" id="loading-info">
-            <strong>Status:</strong> Loading project files...<br>
+            <strong>Status:</strong> Loading project info...<br>
             <strong>Date:</strong> <span id="current-date"></span>
         </div>
 
@@ -111,8 +111,8 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="border-bottom: 2px solid #667eea;">
-                            <th style="padding: 10px; text-align: left;">Extension</th>
-                            <th style="padding: 10px; text-align: right;">Count</th>
+                            <th style="padding: 10px; text-align: left;">Property</th>
+                            <th style="padding: 10px; text-align: right;">Value</th>
                         </tr>
                     </thead>
                     <tbody id="stats-table"></tbody>
@@ -181,7 +181,7 @@
 
                 // Create and set the menu
                 const mainMenuObject = {
-                    title: "File Statistics",
+                    title: "Project Info",
                     icon: "https://mikel-prod.github.io/test_tc_plugin/icon.svg",
                     command: "show_file_stats"
                 };
@@ -213,58 +213,45 @@
                 const project = await globalAPI.project.getProject();
                 console.log('Project:', project);
 
-                // Get project files using Core API
-                // Map location to API endpoint
-                let apiHost = 'app.connect.trimble.com'; // Default US
-                if (project.location === 'europe' || project.location === 'eu') {
-                    apiHost = 'app21.connect.trimble.com'; // Europe
-                } else if (project.location === 'apac' || project.location === 'asia') {
-                    apiHost = 'app31.connect.trimble.com'; // Asia Pacific
-                }
+                // IMPORTANT: Direct API calls are blocked by CORS from browser extensions
+                // We need to use a backend proxy or serverless function
+                // For now, show project info we CAN access
 
-                const apiUrl = `https://${apiHost}/tc/api/2.0/projects/${project.id}/files`;
+                const projectInfo = {
+                    'Project Name': project.name || 'N/A',
+                    'Project ID': project.id || 'N/A',
+                    'Region': project.location || 'N/A',
+                    'Address': project.address || 'N/A',
+                    'CRS': project.crs || 'N/A'
+                };
 
-                console.log('Fetching files from:', apiUrl);
-
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const files = await response.json();
-                console.log('Files received:', files);
-
-                // Count files by extension
-                const extensionCounts = {};
-                let totalFiles = 0;
-
-                function processFiles(fileList) {
-                    if (!Array.isArray(fileList)) return;
-
-                    fileList.forEach(file => {
-                        if (file.type === 'FILE') {
-                            totalFiles++;
-                            const ext = file.name.split('.').pop().toLowerCase() || 'no extension';
-                            extensionCounts[ext] = (extensionCounts[ext] || 0) + 1;
-                        }
-                    });
-                }
-
-                processFiles(files);
-
-                // Display results
-                displayStatistics(extensionCounts, totalFiles);
+                displayProjectInfo(projectInfo);
 
             } catch (error) {
-                console.error('Error loading file statistics:', error);
-                showError('Failed to load files: ' + error.message);
+                console.error('Error loading project info:', error);
+                showError('Failed to load project info: ' + error.message);
             }
+        }
+
+        function displayProjectInfo(projectInfo) {
+            document.getElementById('loading-info').style.display = 'none';
+            document.getElementById('file-stats').style.display = 'block';
+
+            const table = document.getElementById('stats-table');
+            table.innerHTML = '';
+
+            Object.entries(projectInfo).forEach(([key, value]) => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #eee';
+                row.innerHTML = `
+                    <td style="padding: 10px;">${key}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: 600;">${value}</td>
+                `;
+                table.appendChild(row);
+            });
+
+            document.getElementById('total-files').parentElement.innerHTML =
+                '<strong>Note:</strong> File statistics require a backend proxy due to CORS restrictions';
         }
 
         function displayStatistics(extensionCounts, totalFiles) {
