@@ -214,8 +214,15 @@
                 console.log('Project:', project);
 
                 // Get project files using Core API
-                const apiRegion = project.region || 'us-east-1';
-                const apiUrl = `https://app${apiRegion === 'us-east-1' ? '' : apiRegion.replace('us-east-1', '')}.connect.trimble.com/tc/api/2.0/projects/${project.id}/files`;
+                // Map location to API endpoint
+                let apiHost = 'app.connect.trimble.com'; // Default US
+                if (project.location === 'europe' || project.location === 'eu') {
+                    apiHost = 'app21.connect.trimble.com'; // Europe
+                } else if (project.location === 'apac' || project.location === 'asia') {
+                    apiHost = 'app31.connect.trimble.com'; // Asia Pacific
+                }
+
+                const apiUrl = `https://${apiHost}/tc/api/2.0/projects/${project.id}/files`;
 
                 console.log('Fetching files from:', apiUrl);
 
