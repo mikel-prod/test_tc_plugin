@@ -1,7 +1,7 @@
 {
   "url": "https://mikel-prod.github.io/test_tc_plugin/index.html",
   "title": "Hello World Extension",
-  "icon": "https://mikel-prod.github.io/test_tc_plugin/icon.png",
+  "icon": "https://mikel-prod.github.io/test_tc_plugin/icon.svg",
   "description": "A simple Hello World extension for Trimble Connect",
   "infoUrl": "https://github.com/mikel-prod/test_tc_plugin",
   "enabled": true
