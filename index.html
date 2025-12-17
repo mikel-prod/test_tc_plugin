@@ -112,7 +112,7 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
         // Display current date
         document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
             year: 'numeric',
@@ -120,13 +120,69 @@
             day: 'numeric'
         });
 
-        // Check if Trimble Connect Workspace API is available
-        if (window.TC) {
-            document.getElementById('tc-info').classList.add('visible');
-            console.log('Trimble Connect Workspace API detected!');
-        } else {
-            console.log('Extension running in standalone mode (Workspace API not detected)');
+        // Import Trimble Connect Workspace API
+        import * as WorkspaceAPI from 'https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@latest/dist/lib.js';
+
+        // Initialize extension
+        async function initExtension() {
+            try {
+                console.log('Connecting to Trimble Connect Workspace API...');
+
+                // Connect to the API
+                const API = await WorkspaceAPI.connect(
+                    window.parent,
+                    (event, args) => {
+                        console.log('Event received:', event, args);
+                        switch (event) {
+                            case "extension.command":
+                                handleCommand(args.data);
+                                break;
+                            case "extension.accessToken":
+                                console.log('Access token received');
+                                break;
+                            case "extension.userSettingsChanged":
+                                console.log('User settings changed');
+                                break;
+                            default:
+                                console.log('Unknown event:', event);
+                        }
+                    },
+                    30000 // 30 second timeout
+                );
+
+                console.log('Connected to Trimble Connect!');
+                document.getElementById('tc-info').classList.add('visible');
+
+                // Create and set the menu
+                const mainMenuObject = {
+                    title: "Hello World",
+                    icon: "https://mikel-prod.github.io/test_tc_plugin/icon.svg",
+                    command: "show_hello_world"
+                };
+
+                await API.ui.setMenu(mainMenuObject);
+                console.log('Menu set successfully!');
+
+            } catch (error) {
+                console.error('Failed to connect to Trimble Connect:', error);
+                console.log('Extension running in standalone mode');
+            }
         }
+
+        function handleCommand(command) {
+            console.log('Command clicked:', command);
+            // Handle menu commands here
+            switch (command) {
+                case "show_hello_world":
+                    console.log('Hello World menu clicked!');
+                    break;
+                default:
+                    console.log('Unknown command:', command);
+            }
+        }
+
+        // Start the extension
+        initExtension();
     </script>
 </body>
 </html>
