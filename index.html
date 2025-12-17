@@ -112,7 +112,10 @@
         </div>
     </div>
 
-    <script type="module">
+    <!-- Load Trimble Connect Workspace API -->
+    <script src="https://components.connect.trimble.com/trimble-connect-workspace-api/index.js"></script>
+
+    <script>
         // Display current date
         document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {
             year: 'numeric',
@@ -120,13 +123,16 @@
             day: 'numeric'
         });
 
-        // Import Trimble Connect Workspace API
-        import * as WorkspaceAPI from 'https://cdn.jsdelivr.net/npm/trimble-connect-workspace-api@latest/dist/lib.js';
-
         // Initialize extension
         async function initExtension() {
             try {
                 console.log('Connecting to Trimble Connect Workspace API...');
+                console.log('WorkspaceAPI available:', typeof WorkspaceAPI);
+
+                // Check if WorkspaceAPI is loaded
+                if (typeof WorkspaceAPI === 'undefined') {
+                    throw new Error('WorkspaceAPI not loaded');
+                }
 
                 // Connect to the API
                 const API = await WorkspaceAPI.connect(
